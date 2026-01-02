@@ -2,12 +2,15 @@ from faster_whisper import WhisperModel
 from os import PathLike
 from dataclasses import dataclass
 
-
-@dataclass
+@dataclass(frozen=True)
 class Subtitle:
+    text: str
     start_time: float
     end_time: float
-    text: str
+    
+    @property
+    def duration(self) -> float:
+        return self.end_time - self.start_time
     
 
 class Transcriber:
@@ -17,17 +20,20 @@ class Transcriber:
             "tiny"
         )
 
-    def transcribe(self, audio_path: PathLike) -> list[Subtitle]:
+    def transcribe(self, audio_path: PathLike) -> tuple[list[Subtitle], list[Subtitle]]:
         transcribed, i = self.model.transcribe(audio_path)
 
-        out = []
+        words = []
+        segments = []
 
         for segment in transcribed:
+            segments.append(Subtitle(text=segment.text, start_time=segment.start, end_time=segment.end))
 
             if not segment.words:
                 continue
 
             for word in segment.words:
-                out.append(Subtitle(word.start, word.end, word.word))
+                words.append(Subtitle(text=word.word, start_time=word.start, end_time=word.end))
 
-        return out
+        return words, segments
+       
